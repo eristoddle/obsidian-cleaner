@@ -108,7 +108,7 @@ describe('Unit: Tag Cleanup', () => {
   describe('collectAllTags', () => {
     it('returns empty map for vault with no files', () => {
       const mockVault = {
-        getMarkdownFiles: () => [],
+        getMarkdownFiles: (): any[] => [],
       } as unknown as Vault;
 
       const mockMetadataCache = {
@@ -159,7 +159,7 @@ describe('Unit: Modal State', () => {
 
   it('validates auto-advance when no items found', () => {
     // If scan returns 0 items, should auto-advance
-    const scanResult = { items: [] };
+    const scanResult: { items: any[] } = { items: [] };
     const shouldAutoAdvance = scanResult.items.length === 0;
 
     expect(shouldAutoAdvance).toBe(true);
