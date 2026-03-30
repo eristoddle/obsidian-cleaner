@@ -24,141 +24,31 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => AttachmentCleanerPlugin
+  default: () => ObsidianCleanerPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian = require("obsidian");
+var import_obsidian8 = require("obsidian");
+
+// src/types.ts
 var DEFAULT_SETTINGS = {
+  orphanedAttachments: true,
+  conflictedFiles: true,
+  duplicateFiles: true,
+  emptyMarkdownFiles: true,
+  emptyFolders: true,
+  tagCleanup: false,
+  frontmatterCleanup: false,
+  deletionMode: "obsidian-trash",
   confirmBeforeDelete: true,
   showNotifications: true,
-  includedExtensions: ["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "pdf", "mp4", "webm", "mp3", "wav", "ogg", "flac"]
+  runOnStartup: false,
+  includedExtensions: ["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "pdf", "mp4", "webm", "mp3", "wav", "ogg", "flac"],
+  frontmatterRules: []
 };
-var AttachmentCleanerPlugin = class extends import_obsidian.Plugin {
-  async onload() {
-    await this.loadSettings();
-    this.addRibbonIcon("trash-2", "Clean unattached files", () => {
-      this.cleanUnattachedFiles();
-    });
-    this.addCommand({
-      id: "clean-unattached-files",
-      name: "Clean unattached files",
-      callback: () => {
-        this.cleanUnattachedFiles();
-      }
-    });
-    this.addSettingTab(new AttachmentCleanerSettingTab(this.app, this));
-  }
-  onunload() {
-  }
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
-  async saveSettings() {
-    await this.saveData(this.settings);
-  }
-  async cleanUnattachedFiles() {
-    const unattachedFiles = await this.findUnattachedFiles();
-    if (unattachedFiles.length === 0) {
-      if (this.settings.showNotifications) {
-        new import_obsidian.Notice("No unattached files found.");
-      }
-      return;
-    }
-    if (this.settings.confirmBeforeDelete) {
-      new ConfirmationModal(this.app, unattachedFiles, (filesToDelete) => {
-        this.deleteFiles(filesToDelete);
-      }).open();
-    } else {
-      this.deleteFiles(unattachedFiles);
-    }
-  }
-  async findUnattachedFiles() {
-    const allFiles = this.app.vault.getFiles();
-    const markdownFiles = this.app.vault.getMarkdownFiles();
-    const potentialAttachments = allFiles.filter((file) => {
-      const extension = file.extension.toLowerCase();
-      return this.settings.includedExtensions.includes(extension);
-    });
-    const allMarkdownContent = [];
-    for (const mdFile of markdownFiles) {
-      const content = await this.app.vault.cachedRead(mdFile);
-      allMarkdownContent.push(content);
-    }
-    const unattachedFiles = potentialAttachments.filter((file) => {
-      return !this.isFileReferenced(file, allMarkdownContent);
-    });
-    return unattachedFiles;
-  }
-  isFileReferenced(file, allMarkdownContent) {
-    const fileName = file.name;
-    const baseName = file.basename;
-    for (const content of allMarkdownContent) {
-      if (content.includes(fileName) || content.includes(baseName)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  async deleteFiles(files) {
-    let deletedCount = 0;
-    for (const file of files) {
-      try {
-        await this.app.vault.trash(file, false);
-        deletedCount++;
-      } catch (error) {
-        console.error(`Failed to delete ${file.path}:`, error);
-      }
-    }
-    if (this.settings.showNotifications) {
-      new import_obsidian.Notice(`Moved ${deletedCount} unattached file(s) to trash.`);
-    }
-  }
-};
-var ConfirmationModal = class extends import_obsidian.Modal {
-  constructor(app, files, onConfirm) {
-    super(app);
-    this.files = files;
-    this.onConfirm = onConfirm;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("h2", { text: "Confirm File Deletion" });
-    contentEl.createEl("p", {
-      text: `Found ${this.files.length} unattached file(s). The following files will be moved to trash:`
-    });
-    const fileList = contentEl.createEl("div", { cls: "attachment-cleaner-file-list" });
-    fileList.style.maxHeight = "300px";
-    fileList.style.overflow = "auto";
-    fileList.style.border = "1px solid var(--background-modifier-border)";
-    fileList.style.borderRadius = "4px";
-    fileList.style.padding = "8px";
-    fileList.style.marginBottom = "16px";
-    this.files.forEach((file) => {
-      const fileItem = fileList.createEl("div", { text: file.path });
-      fileItem.style.padding = "2px 0";
-    });
-    const buttonContainer = contentEl.createEl("div", { cls: "attachment-cleaner-buttons" });
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.gap = "8px";
-    buttonContainer.style.justifyContent = "flex-end";
-    const cancelBtn = buttonContainer.createEl("button", { text: "Cancel" });
-    cancelBtn.onclick = () => this.close();
-    const confirmBtn = buttonContainer.createEl("button", {
-      text: `Move ${this.files.length} file(s) to trash`,
-      cls: "mod-warning"
-    });
-    confirmBtn.onclick = () => {
-      this.onConfirm(this.files);
-      this.close();
-    };
-  }
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-};
-var AttachmentCleanerSettingTab = class extends import_obsidian.PluginSettingTab {
+
+// src/settings.ts
+var import_obsidian = require("obsidian");
+var ObsidianCleanerSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -166,21 +56,922 @@ var AttachmentCleanerSettingTab = class extends import_obsidian.PluginSettingTab
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Attachment Cleaner Settings" });
-    new import_obsidian.Setting(containerEl).setName("Confirm before delete").setDesc("Show confirmation dialog before deleting files").addToggle((toggle) => toggle.setValue(this.plugin.settings.confirmBeforeDelete).onChange(async (value) => {
-      this.plugin.settings.confirmBeforeDelete = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("Show notifications").setDesc("Show notifications when cleaning is complete").addToggle((toggle) => toggle.setValue(this.plugin.settings.showNotifications).onChange(async (value) => {
-      this.plugin.settings.showNotifications = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("File extensions").setDesc("Comma-separated list of file extensions to consider as attachments").addTextArea((text) => text.setPlaceholder("png,jpg,jpeg,gif,pdf,mp4,mp3...").setValue(this.plugin.settings.includedExtensions.join(",")).onChange(async (value) => {
-      this.plugin.settings.includedExtensions = value.split(",").map((ext) => ext.trim().toLowerCase()).filter((ext) => ext.length > 0);
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h3", { text: "Usage" });
-    containerEl.createEl("p", { text: "Click the trash icon in the ribbon or use the command palette to clean unattached files." });
-    containerEl.createEl("p", { text: "Files are moved to the vault trash (.trash folder) and can be recovered if needed." });
+    containerEl.createEl("h3", { text: "Cleanup Types" });
+    const cleanupTypes = [
+      {
+        key: "orphanedAttachments",
+        name: "Orphaned Attachments",
+        desc: "Remove attachment files not referenced by any note"
+      },
+      {
+        key: "conflictedFiles",
+        name: "Conflicted Files",
+        desc: "Resolve sync-conflict copies (Dropbox, Syncthing, etc.)"
+      },
+      {
+        key: "duplicateFiles",
+        name: "Duplicate Files",
+        desc: "Remove numbered duplicates (e.g. Note 1.md) when the original exists"
+      },
+      {
+        key: "emptyMarkdownFiles",
+        name: "Empty Markdown Files",
+        desc: "Remove zero-byte .md files"
+      },
+      {
+        key: "emptyFolders",
+        name: "Empty Folders",
+        desc: "Remove folders that contain no files or subfolders"
+      },
+      {
+        key: "tagCleanup",
+        name: "Tag Cleanup",
+        desc: "Identify and merge near-duplicate tags"
+      },
+      {
+        key: "frontmatterCleanup",
+        name: "Frontmatter Cleanup",
+        desc: "Delete notes matching configured frontmatter rules"
+      }
+    ];
+    for (const { key, name, desc } of cleanupTypes) {
+      new import_obsidian.Setting(containerEl).setName(name).setDesc(desc).addToggle(
+        (toggle) => toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
+          this.plugin.settings[key] = value;
+          await this.plugin.saveSettings();
+        })
+      );
+    }
+    containerEl.createEl("h3", { text: "Behavior" });
+    new import_obsidian.Setting(containerEl).setName("Deletion Mode").setDesc("How files are removed when cleanup is applied").addDropdown(
+      (dropdown) => dropdown.addOption("system-trash", "System Trash").addOption("obsidian-trash", "Obsidian Trash (.trash folder)").addOption("permanent", "Permanent Delete").setValue(this.plugin.settings.deletionMode).onChange(async (value) => {
+        this.plugin.settings.deletionMode = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Confirm Before Delete").setDesc("Show the step-by-step review modal before applying any changes").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.confirmBeforeDelete).onChange(async (value) => {
+        this.plugin.settings.confirmBeforeDelete = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Show Notifications").setDesc("Display a summary notice after each cleanup run").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.showNotifications).onChange(async (value) => {
+        this.plugin.settings.showNotifications = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Run on Startup").setDesc("Automatically run cleanup when Obsidian opens").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.runOnStartup).onChange(async (value) => {
+        this.plugin.settings.runOnStartup = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    containerEl.createEl("h3", { text: "Attachments" });
+    new import_obsidian.Setting(containerEl).setName("Included Extensions").setDesc("Comma-separated list of file extensions to consider as attachments (e.g. png,jpg,pdf)").addTextArea(
+      (text) => text.setValue(this.plugin.settings.includedExtensions.join(",")).onChange(async (value) => {
+        this.plugin.settings.includedExtensions = value.split(",").map((ext) => ext.trim().toLowerCase()).filter((ext) => ext.length > 0);
+        await this.plugin.saveSettings();
+      })
+    );
+    containerEl.createEl("h3", { text: "Frontmatter Rules" });
+    this.renderFrontmatterRules(containerEl);
+  }
+  renderFrontmatterRules(containerEl) {
+    containerEl.querySelectorAll(".frontmatter-rule-row, .frontmatter-add-btn").forEach((el) => el.remove());
+    const rules = this.plugin.settings.frontmatterRules;
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      const setting = new import_obsidian.Setting(containerEl).setName(`key: ${rule.key || "(empty)"}${rule.value !== void 0 ? `, value: ${Array.isArray(rule.value) ? rule.value.join(", ") : rule.value}` : ""}`).addText(
+        (text) => text.setPlaceholder("key").setValue(rule.key).onChange(async (value) => {
+          rules[i].key = value;
+          setting.setName(`key: ${value || "(empty)"}${rules[i].value !== void 0 ? `, value: ${Array.isArray(rules[i].value) ? rules[i].value.join(", ") : rules[i].value}` : ""}`);
+          await this.plugin.saveSettings();
+        })
+      ).addText(
+        (text) => text.setPlaceholder("value (optional, comma-separated)").setValue(
+          rule.value === void 0 ? "" : Array.isArray(rule.value) ? rule.value.join(", ") : rule.value
+        ).onChange(async (value) => {
+          const trimmed = value.trim();
+          if (trimmed === "") {
+            rules[i].value = void 0;
+          } else {
+            const parts = trimmed.split(",").map((v) => v.trim()).filter((v) => v.length > 0);
+            rules[i].value = parts.length === 1 ? parts[0] : parts;
+          }
+          setting.setName(`key: ${rules[i].key || "(empty)"}${rules[i].value !== void 0 ? `, value: ${Array.isArray(rules[i].value) ? rules[i].value.join(", ") : rules[i].value}` : ""}`);
+          await this.plugin.saveSettings();
+        })
+      ).addExtraButton(
+        (btn) => btn.setIcon("trash").setTooltip("Remove rule").onClick(async () => {
+          rules.splice(i, 1);
+          await this.plugin.saveSettings();
+          this.renderFrontmatterRules(containerEl);
+        })
+      );
+      setting.settingEl.addClass("frontmatter-rule-row");
+    }
+    const addBtnSetting = new import_obsidian.Setting(containerEl).addButton(
+      (btn) => btn.setButtonText("Add Rule").onClick(async () => {
+        rules.push({ key: "" });
+        await this.plugin.saveSettings();
+        this.renderFrontmatterRules(containerEl);
+      })
+    );
+    addBtnSetting.settingEl.addClass("frontmatter-add-btn");
+  }
+};
+
+// src/cleaners/orphaned-attachments.ts
+var import_obsidian2 = require("obsidian");
+
+// src/utils/delete.ts
+async function deleteFile(app, file, mode) {
+  switch (mode) {
+    case "system-trash":
+      await app.vault.trash(file, true);
+      break;
+    case "obsidian-trash":
+      await app.vault.trash(file, false);
+      break;
+    case "permanent":
+      await app.vault.delete(file);
+      break;
+  }
+}
+
+// src/cleaners/orphaned-attachments.ts
+var OrphanedAttachmentsCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "orphanedAttachments";
+    this.label = "Orphaned Attachments";
+  }
+  async scan() {
+    var _a;
+    const attachmentFolder = (_a = this.app.vault.config) == null ? void 0 : _a.attachmentFolderPath;
+    if (!attachmentFolder) {
+      new import_obsidian2.Notice("Obsidian Cleaner: No attachment folder configured. Set one in Obsidian Settings > Files & Links.");
+      return { items: [] };
+    }
+    const markdownFiles = this.app.vault.getMarkdownFiles();
+    const markdownContents = [];
+    for (const mdFile of markdownFiles) {
+      try {
+        const content = await this.app.vault.cachedRead(mdFile);
+        markdownContents.push(content);
+      } catch (e) {
+      }
+    }
+    const allFiles = this.app.vault.getFiles();
+    const normalizedFolder = attachmentFolder.endsWith("/") ? attachmentFolder : attachmentFolder + "/";
+    const candidates = allFiles.filter((file) => {
+      var _a2;
+      const inFolder = file.path.startsWith(normalizedFolder) || ((_a2 = file.parent) == null ? void 0 : _a2.path) === attachmentFolder;
+      const extMatch = this.settings.includedExtensions.includes(
+        file.extension.toLowerCase()
+      );
+      return inFolder && extMatch;
+    });
+    const orphaned = candidates.filter(
+      (file) => !this.isFileReferenced(file, markdownContents)
+    );
+    return {
+      items: orphaned.map((file) => ({
+        type: this.id,
+        label: file.path,
+        detail: `Size: ${file.stat.size} bytes`,
+        payload: file
+      }))
+    };
+  }
+  isFileReferenced(file, markdownContents) {
+    const fileName = file.name;
+    const baseName = file.basename;
+    for (const content of markdownContents) {
+      if (content.includes(fileName) || content.includes(baseName)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  async apply(accepted) {
+    let applied = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const file = item.payload;
+      try {
+        await deleteFile(this.app, file, this.settings.deletionMode);
+        applied++;
+      } catch (e) {
+        const msg = `Failed to delete ${file.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+      }
+    }
+    return {
+      applied,
+      skipped: accepted.length - applied - errors.length,
+      errors
+    };
+  }
+};
+
+// src/cleaners/conflicted-files.ts
+var import_obsidian3 = require("obsidian");
+var CONFLICTED_PATTERN = /^(.+) \([^)]*'s conflicted copy[^)]*\)\.md$/i;
+function isConflictedFile(name) {
+  return CONFLICTED_PATTERN.test(name);
+}
+function extractBaseName(name) {
+  const match = name.match(CONFLICTED_PATTERN);
+  return match ? match[1] : null;
+}
+var ConflictedFilesCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "conflictedFiles";
+    this.label = "Conflicted Files";
+  }
+  async scan() {
+    var _a, _b;
+    const allFiles = this.app.vault.getMarkdownFiles();
+    const items = [];
+    for (const file of allFiles) {
+      if (!isConflictedFile(file.name)) continue;
+      const baseName = extractBaseName(file.name);
+      if (!baseName) continue;
+      const folder = (_b = (_a = file.parent) == null ? void 0 : _a.path) != null ? _b : "";
+      const originalPath = folder ? `${folder}/${baseName}.md` : `${baseName}.md`;
+      const original = this.app.vault.getAbstractFileByPath(originalPath);
+      const originalFile = original instanceof import_obsidian3.TFile ? original : null;
+      const payload = {
+        conflicted: file,
+        original: originalFile,
+        action: "use-original"
+      };
+      items.push({
+        type: this.id,
+        label: file.path,
+        detail: originalFile ? `Conflicts with: ${originalFile.path}` : `No original found for: ${originalPath}`,
+        payload
+      });
+    }
+    return { items };
+  }
+  async apply(accepted) {
+    var _a, _b;
+    let applied = 0;
+    let skipped = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const payload = item.payload;
+      const { conflicted, original, action } = payload;
+      try {
+        if (action === "skip") {
+          skipped++;
+          continue;
+        }
+        if (action === "use-conflicted") {
+          if (original) {
+            const content = await this.app.vault.read(conflicted);
+            await this.app.vault.modify(original, content);
+            await deleteFile(this.app, conflicted, this.settings.deletionMode);
+          } else {
+            const baseName = extractBaseName(conflicted.name);
+            if (baseName) {
+              const folder = (_b = (_a = conflicted.parent) == null ? void 0 : _a.path) != null ? _b : "";
+              const newPath = folder ? `${folder}/${baseName}.md` : `${baseName}.md`;
+              await this.app.fileManager.renameFile(conflicted, newPath);
+            } else {
+              await deleteFile(this.app, conflicted, this.settings.deletionMode);
+            }
+          }
+          applied++;
+        } else {
+          await deleteFile(this.app, conflicted, this.settings.deletionMode);
+          applied++;
+        }
+      } catch (e) {
+        const msg = `Failed to process ${conflicted.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+      }
+    }
+    return { applied, skipped, errors };
+  }
+};
+
+// src/cleaners/duplicate-files.ts
+var import_obsidian4 = require("obsidian");
+var DUPLICATE_PATTERN = /^(.+) (\d+)\.md$/;
+function isDuplicateFile(name) {
+  return DUPLICATE_PATTERN.test(name);
+}
+function extractDuplicateBaseName(name) {
+  const match = name.match(DUPLICATE_PATTERN);
+  return match ? match[1] : null;
+}
+var DuplicateFilesCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "duplicateFiles";
+    this.label = "Duplicate Files";
+  }
+  async scan() {
+    var _a, _b;
+    const allFiles = this.app.vault.getMarkdownFiles();
+    const items = [];
+    for (const file of allFiles) {
+      if (!isDuplicateFile(file.name)) continue;
+      const baseName = extractDuplicateBaseName(file.name);
+      if (!baseName) continue;
+      const folder = (_b = (_a = file.parent) == null ? void 0 : _a.path) != null ? _b : "";
+      const originalPath = folder ? `${folder}/${baseName}.md` : `${baseName}.md`;
+      const original = this.app.vault.getAbstractFileByPath(originalPath);
+      if (!(original instanceof import_obsidian4.TFile)) continue;
+      items.push({
+        type: this.id,
+        label: `${file.name} (duplicate of ${original.path})`,
+        detail: `Last modified: ${new Date(file.stat.mtime).toLocaleString()}`,
+        payload: file
+      });
+    }
+    return { items };
+  }
+  async apply(accepted) {
+    let applied = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const file = item.payload;
+      if (!isDuplicateFile(file.name)) {
+        const msg = `Refusing to delete ${file.path}: file is not a duplicate (original file guard)`;
+        console.error(msg);
+        errors.push(msg);
+        continue;
+      }
+      try {
+        await deleteFile(this.app, file, this.settings.deletionMode);
+        applied++;
+      } catch (e) {
+        const msg = `Failed to delete ${file.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+      }
+    }
+    return {
+      applied,
+      skipped: accepted.length - applied - errors.length,
+      errors
+    };
+  }
+};
+
+// src/cleaners/empty-markdown.ts
+var EmptyMarkdownCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "emptyMarkdownFiles";
+    this.label = "Empty Markdown Files";
+  }
+  async scan() {
+    const emptyFiles = this.app.vault.getMarkdownFiles().filter((f) => f.stat.size === 0);
+    return {
+      items: emptyFiles.map((file) => ({
+        type: this.id,
+        label: file.path,
+        payload: file
+      }))
+    };
+  }
+  async apply(accepted) {
+    let applied = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const file = item.payload;
+      try {
+        await deleteFile(this.app, file, this.settings.deletionMode);
+        applied++;
+      } catch (e) {
+        const msg = `Failed to delete ${file.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+      }
+    }
+    return { applied, skipped: accepted.length - applied - errors.length, errors };
+  }
+};
+
+// src/cleaners/empty-folders.ts
+var import_obsidian5 = require("obsidian");
+function isEmptyFolder(folder, vault) {
+  if (folder.children.length === 0) return true;
+  return folder.children.every(
+    (child) => child instanceof import_obsidian5.TFolder && isEmptyFolder(child, vault)
+  );
+}
+var EmptyFoldersCleaner = class {
+  constructor(app) {
+    this.app = app;
+    this.id = "emptyFolders";
+    this.label = "Empty Folders";
+  }
+  async scan() {
+    const allFolders = this.app.vault.getAllLoadedFiles().filter((f) => f instanceof import_obsidian5.TFolder);
+    const emptyFolders = allFolders.filter((folder) => {
+      if (folder.path === "/" || folder.isRoot()) return false;
+      if (folder.path === ".obsidian" || folder.name === ".obsidian") return false;
+      return isEmptyFolder(folder, this.app.vault);
+    });
+    return {
+      items: emptyFolders.map((folder) => ({
+        type: this.id,
+        label: folder.path,
+        payload: folder
+      }))
+    };
+  }
+  async apply(accepted) {
+    let applied = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const folder = item.payload;
+      try {
+        await this.app.vault.adapter.rmdir(folder.path, false);
+        applied++;
+      } catch (e) {
+        const msg = `Failed to remove folder ${folder.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+      }
+    }
+    return { applied, skipped: accepted.length - applied - errors.length, errors };
+  }
+};
+
+// src/utils/levenshtein.ts
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (b.length === 0) return a.length;
+  if (a.length === 0) return b.length;
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from(
+    { length: m + 1 },
+    (_, i) => Array.from({ length: n + 1 }, (__, j) => i === 0 ? j : j === 0 ? i : 0)
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+// src/utils/frontmatter.ts
+function parseFrontmatterTags(cache) {
+  var _a;
+  if (!cache) return [];
+  const tags = [];
+  const fmTags = (_a = cache.frontmatter) == null ? void 0 : _a.tags;
+  if (fmTags) {
+    const arr = Array.isArray(fmTags) ? fmTags : [fmTags];
+    for (const t of arr) {
+      if (typeof t === "string") {
+        tags.push(t.replace(/^#/, "").toLowerCase());
+      }
+    }
+  }
+  if (cache.tags) {
+    for (const tagCache of cache.tags) {
+      tags.push(tagCache.tag.replace(/^#/, "").toLowerCase());
+    }
+  }
+  return tags;
+}
+function replaceTagInContent(content, sourceTag, targetTag) {
+  const fmTagPattern = new RegExp(`^(\\s*-\\s+)${escapeRegex(sourceTag)}(\\s*)$`, "gm");
+  let result = content.replace(fmTagPattern, `$1${targetTag}$2`);
+  const inlinePattern = new RegExp(`#${escapeRegex(sourceTag)}(?=\\s|$|[^\\w/-])`, "g");
+  result = result.replace(inlinePattern, `#${targetTag}`);
+  return result;
+}
+function matchesRule(frontmatter, rule) {
+  if (!frontmatter) return false;
+  if (!(rule.key in frontmatter)) return false;
+  if (rule.value === void 0) {
+    return true;
+  }
+  const actual = frontmatter[rule.key];
+  if (Array.isArray(rule.value)) {
+    return rule.value.includes(actual);
+  }
+  return actual === rule.value;
+}
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// src/cleaners/tag-cleanup.ts
+function collectAllTags(vault, metadataCache) {
+  var _a;
+  const tagCounts = /* @__PURE__ */ new Map();
+  for (const file of vault.getMarkdownFiles()) {
+    const cache = metadataCache.getFileCache(file);
+    const tags = parseFrontmatterTags(cache);
+    const uniqueTags = new Set(tags);
+    for (const tag of uniqueTags) {
+      tagCounts.set(tag, ((_a = tagCounts.get(tag)) != null ? _a : 0) + 1);
+    }
+  }
+  return tagCounts;
+}
+function findSimilarTagPairs(tags) {
+  const pairs = [];
+  for (let i = 0; i < tags.length; i++) {
+    for (let j = i + 1; j < tags.length; j++) {
+      const a = tags[i];
+      const b = tags[j];
+      if (a === b) continue;
+      const isPlural = a + "s" === b || b + "s" === a;
+      const isSimilar = levenshtein(a, b) <= 2;
+      if (isPlural || isSimilar) {
+        pairs.push([a, b]);
+      }
+    }
+  }
+  return pairs;
+}
+var TagCleanupCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "tagCleanup";
+    this.label = "Tag Cleanup";
+  }
+  async scan() {
+    var _a, _b;
+    const tagCounts = collectAllTags(this.app.vault, this.app.metadataCache);
+    const tags = Array.from(tagCounts.keys());
+    const pairs = findSimilarTagPairs(tags);
+    const items = [];
+    for (const [tagA, tagB] of pairs) {
+      const countA = (_a = tagCounts.get(tagA)) != null ? _a : 0;
+      const countB = (_b = tagCounts.get(tagB)) != null ? _b : 0;
+      const affectedFiles = [];
+      for (const file of this.app.vault.getMarkdownFiles()) {
+        const cache = this.app.metadataCache.getFileCache(file);
+        const fileTags = parseFrontmatterTags(cache);
+        if (fileTags.includes(tagA)) {
+          affectedFiles.push(file.path);
+        }
+      }
+      const payload = {
+        sourceTag: tagA,
+        targetTag: tagB,
+        affectedFiles
+      };
+      items.push({
+        type: this.id,
+        label: `"${tagA}" \u2192 "${tagB}" (${countA} notes)`,
+        detail: `Similar to: ${tagB} (${countB} notes)`,
+        payload
+      });
+    }
+    return { items };
+  }
+  async apply(accepted) {
+    let applied = 0;
+    let skipped = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const { sourceTag, targetTag, affectedFiles } = item.payload;
+      for (const filePath of affectedFiles) {
+        try {
+          const file = this.app.vault.getAbstractFileByPath(filePath);
+          if (!file) {
+            skipped++;
+            continue;
+          }
+          const content = await this.app.vault.read(file);
+          const updated = replaceTagInContent(content, sourceTag, targetTag);
+          await this.app.vault.modify(file, updated);
+          applied++;
+        } catch (e) {
+          const msg = `Failed to update tag in ${filePath}: ${e}`;
+          console.error(msg);
+          errors.push(msg);
+        }
+      }
+    }
+    return { applied, skipped, errors };
+  }
+};
+
+// src/cleaners/frontmatter-cleanup.ts
+var FrontmatterCleanupCleaner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+    this.id = "frontmatterCleanup";
+    this.label = "Frontmatter Cleanup";
+  }
+  async scan() {
+    var _a;
+    const items = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const rule of this.settings.frontmatterRules) {
+      for (const file of this.app.vault.getMarkdownFiles()) {
+        if (seen.has(file.path)) continue;
+        const frontmatter = (_a = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a.frontmatter;
+        if (!matchesRule(frontmatter, rule)) continue;
+        seen.add(file.path);
+        const valueStr = rule.value ? `, value="${Array.isArray(rule.value) ? rule.value.join(", ") : rule.value}"` : "";
+        items.push({
+          type: this.id,
+          label: file.path,
+          detail: `Matches rule: key="${rule.key}"${valueStr}`,
+          payload: file
+        });
+      }
+    }
+    return { items };
+  }
+  async apply(accepted) {
+    let applied = 0;
+    let skipped = 0;
+    const errors = [];
+    for (const item of accepted) {
+      const file = item.payload;
+      try {
+        await deleteFile(this.app, file, this.settings.deletionMode);
+        applied++;
+      } catch (e) {
+        const msg = `Failed to delete ${file.path}: ${e}`;
+        console.error(msg);
+        errors.push(msg);
+        skipped++;
+      }
+    }
+    return { applied, skipped, errors };
+  }
+};
+
+// src/modal/cleanup-modal.ts
+var import_obsidian6 = require("obsidian");
+
+// src/modal/step-renderer.ts
+function renderItemList(container, options) {
+  container.empty();
+  if (options.items.length === 0) {
+    container.createEl("p", { text: "No items found." });
+    return;
+  }
+  const list = container.createEl("div", { cls: "oc-item-list" });
+  list.style.maxHeight = "300px";
+  list.style.overflowY = "auto";
+  options.items.forEach((item, i) => {
+    const row = list.createEl("div", { cls: "oc-item-row" });
+    row.style.display = "flex";
+    row.style.alignItems = "flex-start";
+    row.style.gap = "8px";
+    row.style.padding = "4px 0";
+    const cb = row.createEl("input");
+    cb.type = "checkbox";
+    cb.checked = options.checked.has(i);
+    cb.onchange = () => options.onToggle(i, cb.checked);
+    const label = row.createEl("div");
+    label.createEl("div", { text: item.label, cls: "oc-item-label" });
+    if (item.detail) {
+      const detail = label.createEl("div", { text: item.detail, cls: "oc-item-detail" });
+      detail.style.fontSize = "0.85em";
+      detail.style.color = "var(--text-muted)";
+    }
+  });
+}
+
+// src/modal/cleanup-modal.ts
+var CleanupModal = class extends import_obsidian6.Modal {
+  constructor(app, cleaners) {
+    super(app);
+    this.stepIndex = 0;
+    this.checkedItems = /* @__PURE__ */ new Set();
+    this.currentItems = [];
+    this.appliedSteps = /* @__PURE__ */ new Set();
+    this.summaries = [];
+    this.cleaners = cleaners;
+  }
+  async onOpen() {
+    this.modalEl.style.width = "600px";
+    await this.renderStep();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+  async renderStep() {
+    const { contentEl } = this;
+    contentEl.empty();
+    if (this.stepIndex >= this.cleaners.length) {
+      this.renderSummary();
+      return;
+    }
+    const cleaner = this.cleaners[this.stepIndex];
+    const indicator = contentEl.createEl("div", {
+      text: `Step ${this.stepIndex + 1} of ${this.cleaners.length}: ${cleaner.label}`,
+      cls: "oc-step-indicator"
+    });
+    indicator.style.cssText = "font-weight:600;margin-bottom:8px;color:var(--text-muted)";
+    const { items } = await cleaner.scan();
+    this.currentItems = items;
+    if (items.length === 0) {
+      this.stepIndex++;
+      await this.renderStep();
+      return;
+    }
+    this.checkedItems = new Set(items.map((_, i) => i));
+    const controls = contentEl.createEl("div", { cls: "oc-controls" });
+    controls.style.cssText = "display:flex;gap:8px;margin-bottom:8px";
+    const selectAll = controls.createEl("button", { text: "Select All" });
+    selectAll.onclick = () => {
+      this.checkedItems = new Set(items.map((_, i) => i));
+      renderItemList(listContainer, { items, checked: this.checkedItems, onToggle: this.onToggle.bind(this) });
+    };
+    const deselectAll = controls.createEl("button", { text: "Deselect All" });
+    deselectAll.onclick = () => {
+      this.checkedItems = /* @__PURE__ */ new Set();
+      renderItemList(listContainer, { items, checked: this.checkedItems, onToggle: this.onToggle.bind(this) });
+    };
+    const listContainer = contentEl.createEl("div");
+    renderItemList(listContainer, { items, checked: this.checkedItems, onToggle: this.onToggle.bind(this) });
+    const btnRow = contentEl.createEl("div", { cls: "oc-btn-row" });
+    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:12px";
+    if (this.stepIndex > 0 && !this.appliedSteps.has(this.stepIndex - 1)) {
+      const backBtn = btnRow.createEl("button", { text: "Back" });
+      backBtn.onclick = async () => {
+        this.stepIndex--;
+        await this.renderStep();
+      };
+    }
+    const skipBtn = btnRow.createEl("button", { text: "Skip" });
+    skipBtn.onclick = async () => {
+      this.summaries.push({
+        type: cleaner.id,
+        label: cleaner.label,
+        applied: 0,
+        skipped: items.length
+      });
+      this.stepIndex++;
+      await this.renderStep();
+    };
+    const applyBtn = btnRow.createEl("button", { text: "Apply & Next", cls: "mod-cta" });
+    applyBtn.onclick = async () => {
+      const accepted = Array.from(this.checkedItems).map((i) => items[i]);
+      const result = await cleaner.apply(accepted);
+      this.appliedSteps.add(this.stepIndex);
+      this.summaries.push({
+        type: cleaner.id,
+        label: cleaner.label,
+        applied: result.applied,
+        skipped: items.length - accepted.length + result.skipped
+      });
+      this.stepIndex++;
+      await this.renderStep();
+    };
+  }
+  onToggle(index, value) {
+    if (value) this.checkedItems.add(index);
+    else this.checkedItems.delete(index);
+  }
+  renderSummary() {
+    const { contentEl } = this;
+    contentEl.createEl("h3", { text: "Cleanup Complete" });
+    if (this.summaries.length === 0) {
+      contentEl.createEl("p", { text: "Nothing to clean up." });
+    } else {
+      const table = contentEl.createEl("table");
+      table.style.width = "100%";
+      const header = table.createEl("tr");
+      ["Cleanup Type", "Applied", "Skipped"].forEach((h) => header.createEl("th", { text: h }));
+      for (const s of this.summaries) {
+        const row = table.createEl("tr");
+        row.createEl("td", { text: s.label });
+        row.createEl("td", { text: String(s.applied) });
+        row.createEl("td", { text: String(s.skipped) });
+      }
+    }
+    const closeBtn = contentEl.createEl("button", { text: "Close", cls: "mod-cta" });
+    closeBtn.style.marginTop = "12px";
+    closeBtn.onclick = () => this.close();
+  }
+};
+
+// src/auto-runner.ts
+var import_obsidian7 = require("obsidian");
+var AutoRunner = class {
+  constructor(app, settings) {
+    this.app = app;
+    this.settings = settings;
+  }
+  async runAll(cleaners) {
+    const summaries = [];
+    for (const cleaner of cleaners) {
+      try {
+        const { items } = await cleaner.scan();
+        if (items.length === 0) continue;
+        const result = await cleaner.apply(items);
+        summaries.push({
+          type: cleaner.id,
+          label: cleaner.label,
+          applied: result.applied,
+          skipped: result.skipped,
+          errors: result.errors.length
+        });
+      } catch (e) {
+        console.error(`AutoRunner: error in ${cleaner.label}:`, e);
+        summaries.push({
+          type: cleaner.id,
+          label: cleaner.label,
+          applied: 0,
+          skipped: 0,
+          errors: 1
+        });
+      }
+    }
+    return summaries;
+  }
+  showSummaryNotice(summaries) {
+    if (!this.settings.showNotifications) return;
+    const totalApplied = summaries.reduce((sum, s) => sum + s.applied, 0);
+    if (totalApplied === 0 && summaries.every((s) => s.errors === 0)) {
+      new import_obsidian7.Notice("Obsidian Cleaner: Vault is clean \u2713");
+      return;
+    }
+    const lines = summaries.filter((s) => s.applied > 0 || s.errors > 0).map((s) => {
+      let line = `${s.label}: ${s.applied} removed`;
+      if (s.errors > 0) line += `, ${s.errors} errors`;
+      return line;
+    });
+    new import_obsidian7.Notice(`Obsidian Cleaner:
+${lines.join("\n")}`, 6e3);
+  }
+};
+
+// main.ts
+var ObsidianCleanerPlugin = class extends import_obsidian8.Plugin {
+  async onload() {
+    await this.loadSettings();
+    this.addRibbonIcon("trash-2", "Obsidian Cleaner", () => this.runCleanup());
+    this.addCommand({
+      id: "obsidian-cleaner:run",
+      name: "Run Obsidian Cleaner",
+      callback: () => this.runCleanup()
+    });
+    this.addSettingTab(new ObsidianCleanerSettingTab(this.app, this));
+    if (this.settings.runOnStartup) {
+      setTimeout(() => this.runCleanup(), 3e3);
+    }
+  }
+  getEnabledCleaners() {
+    const s = this.settings;
+    const cleaners = [];
+    if (s.orphanedAttachments)
+      cleaners.push(new OrphanedAttachmentsCleaner(this.app, s));
+    if (s.conflictedFiles)
+      cleaners.push(new ConflictedFilesCleaner(this.app, s));
+    if (s.duplicateFiles)
+      cleaners.push(new DuplicateFilesCleaner(this.app, s));
+    if (s.emptyMarkdownFiles)
+      cleaners.push(new EmptyMarkdownCleaner(this.app, s));
+    if (s.emptyFolders)
+      cleaners.push(new EmptyFoldersCleaner(this.app));
+    if (s.tagCleanup)
+      cleaners.push(new TagCleanupCleaner(this.app, s));
+    if (s.frontmatterCleanup)
+      cleaners.push(new FrontmatterCleanupCleaner(this.app, s));
+    return cleaners;
+  }
+  async runCleanup() {
+    const cleaners = this.getEnabledCleaners();
+    if (this.settings.confirmBeforeDelete) {
+      new CleanupModal(this.app, cleaners).open();
+    } else {
+      const autoRunner = new AutoRunner(this.app, this.settings);
+      const summaries = await autoRunner.runAll(cleaners);
+      autoRunner.showSummaryNotice(summaries);
+    }
+  }
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
   }
 };
