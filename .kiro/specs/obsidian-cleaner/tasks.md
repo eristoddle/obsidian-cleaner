@@ -88,22 +88,22 @@
   - [x] 14.4 Register settings tab using `ObsidianCleanerSettingTab`
   - [x] 14.5 Ensure all event listeners use `this.registerEvent` per Requirement 15.6
 
-- [-] 15. Tests
-  - [ ] 15.1 Set up test infrastructure: add `vitest` and `fast-check` to `devDependencies`, configure `vitest.config.ts`
-  - [~] 15.2 Write unit tests for `DEFAULT_SETTINGS` defaults, `manifest.json` required fields, `LICENSE` existence, and `package.json` dependency versions
-  - [~] 15.3 Write unit tests for conflicted file resolution actions (overwrite, delete, skip)
-  - [~] 15.4 Write unit tests for modal state: Select All, Deselect All, summary counts, back navigation
-  - [~] 15.5 Write property test for Property 1: disabled toggle excludes cleaner from run
-  - [~] 15.6 Write property test for Property 2: settings round-trip serialization
-  - [~] 15.7 Write property test for Property 3: deletion mode dispatches correct vault API
-  - [~] 15.8 Write property test for Property 4: orphaned scan respects folder and extension filters
-  - [~] 15.9 Write property test for Property 5: file reference detection
-  - [~] 15.10 Write property test for Property 6: conflicted file pattern detection
-  - [~] 15.11 Write property test for Property 7: duplicate file detection and grouping
-  - [~] 15.12 Write property test for Property 8: empty markdown file detection
-  - [~] 15.13 Write property test for Property 9: empty folder detection is recursive
-  - [~] 15.14 Write property test for Property 10: protected folders excluded from empty folder candidates
-  - [~] 15.15 Write property test for Property 11: tag similarity detection (Levenshtein + pluralisation)
-  - [~] 15.16 Write property test for Property 12: tag merge completeness
-  - [~] 15.17 Write property test for Property 13: frontmatter rule matching
-  - [~] 15.18 Write property test for Property 14: modal step list matches enabled cleanup types
+- [x] 15. Tests
+  - [x] 15.1 Set up test infrastructure: add `vitest` and `fast-check` to `devDependencies`, configure `vitest.config.ts`
+  - [x] 15.2 Write unit tests for `DEFAULT_SETTINGS` defaults, `manifest.json` required fields, `LICENSE` existence, and `package.json` dependency versions
+  - [x] 15.3 Write unit tests for conflicted file resolution actions (overwrite, delete, skip)
+  - [x] 15.4 Write unit tests for modal state: Select All, Deselect All, summary counts, back navigation
+  - [x] 15.5 Write property test for Property 1: disabled toggle excludes cleaner from run
+  - [x] 15.6 Write property test for Property 2: settings round-trip serialization
+  - [x] 15.7 Write property test for Property 3: deletion mode dispatches correct vault API
+  - [x] 15.8 Write property test for Property 4: orphaned scan respects folder and extension filters
+  - [x] 15.9 Write property test for Property 5: file reference detection
+  - [x] 15.10 Write property test for Property 6: conflicted file pattern detection
+  - [x] 15.11 Write property test for Property 7: duplicate file detection and grouping
+  - [x] 15.12 Write property test for Property 8: empty markdown file detection
+  - [x] 15.13 Write property test for Property 9: empty folder detection is recursive
+  - [x] 15.14 Write property test for Property 10: protected folders excluded from empty folder candidates
+  - [x] 15.15 Write property test for Property 11: tag similarity detection (Levenshtein + pluralisation)
+  - [x] 15.16 Write property test for Property 12: tag merge completeness
+  - [x] 15.17 Write property test for Property 13: frontmatter rule matching
+  - [x] 15.18 Write property test for Property 14: modal step list matches enabled cleanup types
