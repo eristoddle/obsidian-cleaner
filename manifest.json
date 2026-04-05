@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-cleaner",
 	"name": "Obsidian Cleaner",
-	"version": "1.1.2",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "Clean up unattached files in your vault",
 	"author": "Eristoddle",

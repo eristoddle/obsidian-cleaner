@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-cleaner",
-	"version": "1.1.2",
+	"version": "1.2.0",
 	"description": "Clean up unattached files in your Obsidian vault",
 	"main": "main.js",
 	"scripts": {
